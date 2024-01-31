@@ -5,76 +5,87 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.Scanner;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.io.OutputStream;
-import java.io.PrintWriter;
-import java.io.BufferedReader;
 
 public class FTPSetup {
 
-    private int port;
+ private int port;
 
-    public FTPSetup(int port) {
-        this.port = port;
-    }
-    // méthode qui lance un serveuret vérifie le login de client
-    public void startServer() {
-        try (ServerSocket serverSocket = new ServerSocket(port)) {
-    	 
-            System.out.println("FTP Server is running on port " + port);
+ public FTPSetup(int port) {
+     this.port = port;
+ }
 
-            while (true) {
-                Socket clientSocket = serverSocket.accept();
-                System.out.println("Connection accepted from "+ clientSocket.getInetAddress());
-             
-                if (authenticate(clientSocket)) {
-                    handleClient(clientSocket);
-                } else {
-                 System.out.println("Authentication failed. Closing connection.");
-                 clientSocket.close();
-                }
-            }    
-        } catch (IOException e) {
-         e.printStackTrace();
-        }
-    }
+ public void startServer() {
+	    try (ServerSocket serverSocket = new ServerSocket(port)) {
+	        while (true) {
+	            try (Socket clientSocket = serverSocket.accept()) {
+	                Out("220 Server ready.\r\n", clientSocket);
+	                String login = In(clientSocket);
+	                
+	                Out("331 enter password : \r\n", clientSocket);
+	                String passwd = In(clientSocket);
+	                
+                    String loginParDefaut = "USER a";
+                    String passParDefaut = "PASS 1";
+                    
+	                if (login.equals(loginParDefaut) && passwd.equals(passParDefaut)) {
+	                Out("230 user logged in, proceed.\r\n", clientSocket);
+	                        //handleClient(clientSocket);
+	                    } else {
+	                        Out("530 Not logged in.\r\n", clientSocket);
+	                    }
+	                }
+	             catch (IOException e) {
+	                e.printStackTrace();
+	            }
+	        }
+	    } catch (IOException e) {
+	        e.printStackTrace();
+	    }
+ }
+
  
-    private static boolean authenticate(Socket socket) throws IOException {
-	  
-	    InputStream input = socket.getInputStream();
-	    OutputStream output = socket.getOutputStream();
-	    Scanner scanner = new Scanner(input);
-	    PrintWriter writer = new PrintWriter(output, true);
+	private String In(Socket socket) throws IOException {
+		   InputStream in = socket.getInputStream();
+	       Scanner scan = new Scanner(in);
+	       String str = scan.nextLine();
+	       scan.close();
+	       return str;
+	}
 
-	    // Ask for username       // probléme rencontré ici au niveau de lecture d'inputs
-	    writer.println("Enter username:");
-	    String username = scanner.nextLine();
-
-	    // Ask for password
-	    writer.println("Enter password:");
-	    String password = scanner.nextLine();
-
-	    // Simple authentication check
-	    if (username == "123" && password == "123") 
-	    return true;
-	    else return false;
+	private void Out(String str, Socket socket) throws IOException {
+		OutputStream out = socket.getOutputStream();
+		out.write(str.getBytes());
+		out.flush();
 	}
  
- private static void handleClient(Socket socket) throws IOException {
-     try (
-         InputStream input = socket.getInputStream();
-         BufferedReader reader = new BufferedReader(new InputStreamReader(input));
-         OutputStream output = socket.getOutputStream();
-         PrintWriter writer = new PrintWriter(output, true);
-     ) {   // bloc de code qui retourne l'inverse de chaine de caractere ecrit par l'utilisateur, quant il écrit quit il se déconnecte.
-         String text;   // inspirer par un exemple dans le site codejava.net
-    
-         do {
-             text = reader.readLine();
-             String reverseText = new StringBuilder(text).reverse().toString();
-             writer.println("Server: " + reverseText);
+ /*private boolean authentification(Socket socket) throws IOException {
+	 
+	        Out("username :", socket);
+	        String login = In(socket);
+	        Out("passwd :", socket);
+	        String passwd = In(socket);
+		    
 
-         } while (!text.equals("quit"));
+	        if (login.equals("tariq") && passwd.equals("12345")) {
+				return true;
+			} else {
+				return false;
+			}
+	}*/
+
+	
+ 
+ private void handleClient(Socket socket) throws IOException {
+     try{
+         String text;
+         //code de test
+         do {
+             text = In(socket);
+             String reverseText = new StringBuilder(text).reverse().toString();
+             Out("Server: " + reverseText, socket);
+
+         } while (!text.equals("QUIT"));
      } finally {
          socket.close();
      }

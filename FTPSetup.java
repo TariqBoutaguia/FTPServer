@@ -1,10 +1,10 @@
 package serverFTP;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
 import java.util.Scanner;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -12,6 +12,7 @@ import java.io.OutputStream;
 public class FTPSetup {
 
  private int port;
+ private Socket dataSocket = null; 
 
  public FTPSetup(int port) {
      this.port = port;
@@ -52,14 +53,19 @@ public class FTPSetup {
  
  public void run(Socket socket) {
 		try {
-			String command;
+			 String command = "";
+			 String[] parts = command.split(" ", 2);
+			 //String cmd = parts[0];
+			 String arg = parts.length > 1 ? parts[1] : "";
+			 //String userValue = null;
+			 int dataPort = 0; 
 			while ((command = In(socket)) != null) {
 				switch (command.toUpperCase()) {
 				case "QUIT":
 					Out("221 closing connection\r\n", socket);
 					socket.close();
 					break;
-				case "GET":
+				/*case "GET":
 					// Retrieve the filename from the client
 					String filename = In(socket);
 					File file = new File(filename);
@@ -68,11 +74,48 @@ public class FTPSetup {
 						byte[] fileBytes = Files.readAllBytes(file.toPath());
 						OutputStream outputStream = socket.getOutputStream();
 						outputStream.write(fileBytes);
-						Out("150 File sent successfully\r\n", socket);
+						Out("150 File sent successfully\r\n ", socket);
 					} else {
 						Out("550 Error: File not found\r\n", socket);
 					}
-                    break;
+                    break;*/
+				case "RETR":
+					 String fileName = arg.trim();
+					 Out("150 Opening data connection for " + fileName + "\r\n", socket);
+
+					 if (transferFile(fileName, socket)) {
+					      Out("226 Transfer complete\r\n", socket);
+					 } else {
+						  Out("550 Error: File not found\r\n", socket);
+					 }
+                     break;
+			    case "EPRT":
+					 // Port dans windows
+					 if (dataSocket != null && !dataSocket.isClosed()) {
+					      dataSocket.close();
+					 }
+					 // EPRT |<protocol>|<ip address>|<port>
+					 String[] eprtParams = arg.split("\\|"); // Use arg au lieu input
+					 dataPort = Integer.parseInt(eprtParams[3]);
+
+					 // Notify the client that the command is okay
+
+					 Out("228 ERPT Command okay.\r\n", socket);
+                     //
+					 System.out.println(eprtParams[0]);
+
+					 System.out.println(eprtParams[1]);
+
+					 System.out.println(eprtParams[2]); // Added missing semicolon
+
+					 System.out.println("data port: " + dataPort);
+                     //
+					 // Data connection
+
+					 dataSocket = new Socket("::1", dataPort); // ::1 represents the ip address
+
+					 //System.out.println(dataSocket);
+					 break;
 				case "CD":
               // Change the current directory to the specified directory
          		String currentDirectory = System.getProperty("user.dir");
@@ -82,10 +125,10 @@ public class FTPSetup {
          		if (folder.exists() && folder.isDirectory()) {
          			Out(System.setProperty("user.dir", directory), socket);
          			System.getProperty("user.dir");
-         			Out("250 Directory changed to: " + directory, socket);
+         			Out("250 Directory changed to: " + directory + "\r\n", socket);
          			// sendCommand("Directory changed to: " + directory, socket);
          		} else {
-         			Out("550 Invalid directory", socket);
+         			Out("550 Invalid directory\r\n", socket);
          		}
 				default:
 					Out("500 Invalid command\r\n", socket);
@@ -111,6 +154,22 @@ public class FTPSetup {
 		out.write(str.getBytes());
 		out.flush();
 	}
+	
+	private boolean transferFile(String fileName, Socket clientSocket) throws IOException {
+		 File file = new File("files", fileName);
+		 if (file.exists() && file.isFile()) {
+             try (FileInputStream fileInputStream = new FileInputStream(file);
+             OutputStream dataOutputStream = dataSocket.getOutputStream()) {
+		         byte[] buffer = new byte[1024];
+		         int bytesRead;
+                 while ((bytesRead = fileInputStream.read(buffer)) != -1) {
+                       dataOutputStream.write(buffer, 0, bytesRead);
+                 }
+             return true;
+             }
+		 }
+		     return false;
+		 }
 	
 	
  

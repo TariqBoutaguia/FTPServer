@@ -27,7 +27,7 @@ public class FTPSetup {
 	                
 	                Out("331 User name okay, need password\r\n", clientSocket);
 	                String passwd = In(clientSocket);
-	                
+	                //Login et password
                     String loginParDefaut = "USER a";
                     String passParDefaut = "PASS 1";
                     
@@ -50,7 +50,7 @@ public class FTPSetup {
 	    }
 	}
  
- 
+ //méthode qui gere les commandes, QUIT, GET, CD
  public void run(Socket socket) {
 		try {
 			 String command = "";
@@ -140,7 +140,7 @@ public class FTPSetup {
 		}
 	}
 
- 
+              // Lecture
 	private String In(Socket socket) throws IOException {
 		   InputStream in = socket.getInputStream();
 	       Scanner scan = new Scanner(in);
@@ -148,7 +148,7 @@ public class FTPSetup {
 	       //scan.close();
 	       return str;
 	}
-
+              //Ecriture
 	private void Out(String str, Socket socket) throws IOException {
 		OutputStream out = socket.getOutputStream();
 		out.write(str.getBytes());
